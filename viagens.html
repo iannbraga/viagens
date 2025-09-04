@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Distribuição de Viagens</title>
+    <!-- Vue -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-rbsA2VBKQhggwzxH7pPCaAqO46MgnOM80zW1RWuH61DGLwZJEdK2Kadq2F9CUG65" crossorigin="anonymous">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+</head>
+
+<body>
+    <div id="app" class="container my-4">
+        <h1 class="mb-4">🚐 Distribuição de Viagens</h1>
+
+        <!-- Pessoas -->
+        <div class="card mb-4">
+            <div class="card-header">Pessoas</div>
+            <div class="card-body">
+                <div class="input-group mb-3">
+                    <input v-model="novaPessoaNome" class="form-control" placeholder="Nome da pessoa">
+                    <input v-model.number="novaPessoaEspaco" type="number" class="form-control" min="1"
+                        placeholder="Espaço">
+                    <button class="btn btn-primary" @click="adicionarPessoa">Adicionar</button>
+                    <button class="btn " type="button" data-bs-toggle="collapse" data-bs-target="#pessoasList"
+                        aria-expanded="false" aria-controls="pessoasList">
+                        <i class="bi bi-caret-down-fill"></i>
+                    </button>
+                </div>
+
+                <ul class="list-group mb-3 collapse" id="pessoasList">
+                    <li v-for="p in pessoas" :key="p.id" class="list-group-item d-flex justify-content-between">
+                        <span>{{ p.nome }} ({{ p.espaco }})</span>
+                        <button class="btn btn-sm btn-danger" @click="removerPessoa(p.id)">❌</button>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Carros -->
+        <div class="card mb-4">
+            <div class="card-header">Carros</div>
+            <div class="card-body">
+                <div class="input-group mb-3">
+                    <input v-model="novoCarroNome" class="form-control" placeholder="Nome do carro">
+                    <input v-model.number="novoCarroCapacidade" type="number" class="form-control" min="1"
+                        placeholder="Capacidade">
+                    <button class="btn btn-primary" @click="adicionarCarro">Adicionar</button>
+                    <button class="btn " type="button" data-bs-toggle="collapse" data-bs-target="#carrosList"
+                        aria-expanded="false" aria-controls="carrosList">
+                        <i class="bi bi-caret-down-fill"></i>
+                    </button>
+                </div>
+
+                <ul class="list-group collapse" id="carrosList">
+                    <li v-for="c in carros" :key="c.id" class="list-group-item d-flex justify-content-between">
+                        <span>{{ c.nome }} (capacidade: {{ c.capacidade }})</span>
+                        <button class="btn btn-sm btn-danger" @click="removerCarro(c.id)">❌</button>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Viagens -->
+        <div class="card mb-4">
+            <div class="card-header">Viagens</div>
+            <div class="card-body">
+                <!-- Criar nova viagem -->
+                <div class="mb-3">
+                    <input v-model="novaViagemDescricao" class="form-control mb-2" placeholder="Descrição da viagem">
+                    <input v-model="novaViagemData" type="date" class="form-control mb-2">
+                    <select v-model.number="novaViagemCarro" class="form-select mb-2">
+                        <option disabled value="-1">Selecione um carro</option>
+                        <option v-for="c in carros" :value="c.id">{{ c.nome }}</option>
+                    </select>
+
+                    <button class="btn btn-primary w-100" @click="adicionarViagem">Criar Viagem</button>
+                </div>
+
+                <!-- Lista de viagens -->
+                <ul class="list-group">
+                    <li v-for="v in viagens" :key="v.id" class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="w-100">
+                                <strong>{{ v.descricao }}</strong> - {{ v.data }} <br>
+                                Carro: {{ carros.find(c => c.id === v.carroId)?.nome || 'Nenhum' }} <br>
+
+                                <!-- Pessoas na viagem -->
+                                <div class="mt-2">
+                                    <label class="form-label">Pessoas:</label>
+                                    <div class="input-group mb-2">
+                                        <input v-model="buscaPessoaPorViagem[v.id]" class="form-control"
+                                            placeholder="Buscar pessoa por nome">
+                                        <button class="btn btn-outline-secondary" type="button"
+                                            @click="buscaPessoaPorViagem[v.id]=''">
+                                            <i class="bi bi-x"></i>
+                                        </button>
+                                    </div>
+                                    <div v-if="pessoasFiltradasParaViagem(v.id).length">
+                                        <ul class="list-group mb-2">
+                                            <li v-for="p in pessoasFiltradasParaViagem(v.id)" :key="p.id"
+                                                class="list-group-item d-flex justify-content-between align-items-center">
+                                                <span>{{ p.nome }}</span>
+                                                <button class="btn btn-sm btn-success"
+                                                    @click="adicionarPessoaNaViagem(v.id, p.id)">Adicionar</button>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                    <div v-if="v.pessoas && v.pessoas.length">
+                                        <ul class="list-group">
+                                            <li v-for="pid in v.pessoas" :key="pid"
+                                                class="list-group-item d-flex justify-content-between align-items-center">
+                                                <span>{{ pessoas.find(p => p.id === pid)?.nome || 'Pessoa removida'
+                                                    }}</span>
+                                                <button class="btn btn-sm btn-danger"
+                                                    @click="removerPessoaDaViagem(v.id, pid)">Remover</button>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                    <div v-else class="text-muted">Nenhuma pessoa adicionada.</div>
+                                </div>
+                            </div>
+                            <button class="btn btn-sm btn-danger ms-2" @click="removerViagem(v.id)">❌</button>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Ações -->
+        <div class="d-flex gap-2">
+            <button class="btn btn-secondary" @click="salvarDados">Salvar</button>
+            <button class="btn btn-outline-secondary" @click="carregarDados">Carregar</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"
+        integrity="sha384-oBqDVmMz9ATKxIep9tiCxS/Z9fNfEXiDAYTujMAeBAsjFuCZSmKbSSUnQlmh/jp3"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.min.js"
+        integrity="sha384-cuYeSxntonz0PPNlHhBs68uyIAVpIIOZZ5JqeqvYYIcEL727kskC66kF92t6Xl2V"
+        crossorigin="anonymous"></script>
+    <script src="viagens.js"></script>
+</body>
+
+</html>
